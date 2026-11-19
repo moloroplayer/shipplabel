@@ -199,3 +199,7 @@ FakesAssemblies/
 GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
+
+# Linux-Build (build-linux/)
+build-linux/bin/
+build-linux/obj/
