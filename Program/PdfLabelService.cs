@@ -88,6 +88,13 @@ public class PdfLabelService
         // die Höhe gestreckt), damit er nicht breiter als das Etikett wird.
         public const double TargetWidthMm = 100.0;
 
+        // Innenrand rundum (mm). Die Kopfzeile liegt nach der Drehung direkt am
+        // Bildrand; im Endlos-Modus wird das Bild zusätzlich um 2,5 mm nach rechts
+        // und 2 mm nach oben geschoben (Form1) und der Drucker hat einen nicht
+        // bedruckbaren Rand. Mit 5,5 mm bleiben rechts mindestens 3 mm Abstand
+        // zur Etikettenkante (5,5 - 2,5), oben 3,5 mm (5,5 - 2,0).
+        public const double InnerMarginMm = 5.5;
+
         // Text, an dem ein Hermes-PDF automatisch erkannt wird.
         public const string DetectionText = "Hermes";
     }
@@ -150,7 +157,8 @@ public class PdfLabelService
                         {
                             cropped.RotateFlip(RotateFlipType.Rotate90FlipNone);
                             return ScaleToFit(cropped, dpi, scale, endless,
-                                HermesCropSettings.TargetWidthMm);
+                                HermesCropSettings.TargetWidthMm,
+                                HermesCropSettings.InnerMarginMm);
                         }
                     }
 
@@ -327,9 +335,11 @@ public class PdfLabelService
     /// <summary>
     /// Passt die Bitmap proportional in ein Feld aus Zielbreite und konfigurierter
     /// Zielhöhe ein (oben ausgerichtet, horizontal zentriert, Rest weiß).
+    /// Rundum bleibt der Innenrand <paramref name="marginMm"/> frei, damit nichts
+    /// am Etikettenrand abgeschnitten wird.
     /// Der Aufrufer erhält eine neue Bitmap und ist für deren Dispose verantwortlich.
     /// </summary>
-    private static Bitmap ScaleToFit(Bitmap source, int dpi, float scale, bool endless, double targetWidthMm)
+    private static Bitmap ScaleToFit(Bitmap source, int dpi, float scale, bool endless, double targetWidthMm, double marginMm)
     {
         double targetHeightMm = endless
             ? CropSettings.EndlessHeightMm
@@ -338,9 +348,11 @@ public class PdfLabelService
         int canvasWidthPx  = (int)Math.Round(targetWidthMm  / 25.4 * dpi * scale);
         int canvasHeightPx = (int)Math.Round(targetHeightMm / 25.4 * dpi * scale);
 
+        int marginPx = (int)Math.Round(marginMm / 25.4 * dpi * scale);
+
         double factor = Math.Min(
-            (double)canvasWidthPx  / source.Width,
-            (double)canvasHeightPx / source.Height);
+            (double)(canvasWidthPx  - 2 * marginPx) / source.Width,
+            (double)(canvasHeightPx - 2 * marginPx) / source.Height);
         int drawWidthPx  = (int)Math.Round(source.Width  * factor);
         int drawHeightPx = (int)Math.Round(source.Height * factor);
 
@@ -354,7 +366,7 @@ public class PdfLabelService
                 g.Clear(Color.White);
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 g.DrawImage(source, new Rectangle(
-                    (canvasWidthPx - drawWidthPx) / 2, 0, drawWidthPx, drawHeightPx));
+                    (canvasWidthPx - drawWidthPx) / 2, marginPx, drawWidthPx, drawHeightPx));
             }
 
             return final;
