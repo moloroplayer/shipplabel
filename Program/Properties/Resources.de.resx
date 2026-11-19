@@ -286,4 +286,10 @@ DHLabel ist ein stark erweiterter Fork des Programms DHLConvert von vulture20 (h
   <data name="PrintingErrorN" xml:space="preserve">
     <value>Druckfehler:\n</value>
   </data>
+  <data name="LabelFormat" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="FormatAuto" xml:space="preserve">
+    <value>Automatisch</value>
+  </data>
 </root>

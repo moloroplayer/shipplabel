@@ -48,6 +48,10 @@ namespace DHLabel
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.quitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.formatToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.formatAutoToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.formatDhlToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.formatHermesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.updateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -105,6 +109,7 @@ namespace DHLabel
             // 
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fileToolStripMenuItem,
+            this.formatToolStripMenuItem,
             this.toolStripMenuItem1});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
@@ -177,6 +182,37 @@ namespace DHLabel
             this.quitToolStripMenuItem.Size = new System.Drawing.Size(156, 22);
             this.quitToolStripMenuItem.Text = global::DHLabel.Properties.Resources.Quit;
             this.quitToolStripMenuItem.Click += new System.EventHandler(this.quitToolStripMenuItem_Click);
+            // 
+            // formatToolStripMenuItem
+            // 
+            this.formatToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.formatAutoToolStripMenuItem,
+            this.formatDhlToolStripMenuItem,
+            this.formatHermesToolStripMenuItem});
+            this.formatToolStripMenuItem.Name = "formatToolStripMenuItem";
+            this.formatToolStripMenuItem.Size = new System.Drawing.Size(57, 20);
+            this.formatToolStripMenuItem.Text = global::DHLabel.Properties.Resources.LabelFormat;
+            // 
+            // formatAutoToolStripMenuItem
+            // 
+            this.formatAutoToolStripMenuItem.Name = "formatAutoToolStripMenuItem";
+            this.formatAutoToolStripMenuItem.Size = new System.Drawing.Size(140, 22);
+            this.formatAutoToolStripMenuItem.Text = global::DHLabel.Properties.Resources.FormatAuto;
+            this.formatAutoToolStripMenuItem.Click += new System.EventHandler(this.formatAuto_Click);
+            // 
+            // formatDhlToolStripMenuItem
+            // 
+            this.formatDhlToolStripMenuItem.Name = "formatDhlToolStripMenuItem";
+            this.formatDhlToolStripMenuItem.Size = new System.Drawing.Size(140, 22);
+            this.formatDhlToolStripMenuItem.Text = "DHL";
+            this.formatDhlToolStripMenuItem.Click += new System.EventHandler(this.formatDhl_Click);
+            // 
+            // formatHermesToolStripMenuItem
+            // 
+            this.formatHermesToolStripMenuItem.Name = "formatHermesToolStripMenuItem";
+            this.formatHermesToolStripMenuItem.Size = new System.Drawing.Size(140, 22);
+            this.formatHermesToolStripMenuItem.Text = "Hermes";
+            this.formatHermesToolStripMenuItem.Click += new System.EventHandler(this.formatHermes_Click);
             // 
             // toolStripMenuItem1
             // 
@@ -323,6 +359,10 @@ namespace DHLabel
         private System.Windows.Forms.CheckBox cbOntop;
         private System.Windows.Forms.CheckBox cbOpenWith;
         private System.Windows.Forms.CheckBox cbEndless;
+        private System.Windows.Forms.ToolStripMenuItem formatToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem formatAutoToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem formatDhlToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem formatHermesToolStripMenuItem;
     }
 }
 

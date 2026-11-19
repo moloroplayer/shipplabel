@@ -264,6 +264,24 @@ namespace DHLabel.Properties {
         }
         
         /// <summary>
+        ///   Sucht eine lokalisierte Zeichenfolge, die Label format ähnelt.
+        /// </summary>
+        internal static string LabelFormat {
+            get {
+                return ResourceManager.GetString("LabelFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Sucht eine lokalisierte Zeichenfolge, die Automatic ähnelt.
+        /// </summary>
+        internal static string FormatAuto {
+            get {
+                return ResourceManager.GetString("FormatAuto", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Sucht eine lokalisierte Zeichenfolge, die Error ähnelt.
         /// </summary>
         internal static string Error {

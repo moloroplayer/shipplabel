@@ -322,4 +322,10 @@ DHLabel is a heavily extended fork of the program DHLConvert from vulture20 (htt
   <data name="PrintingErrorN" xml:space="preserve">
     <value>Printing error:\n</value>
   </data>
+  <data name="LabelFormat" xml:space="preserve">
+    <value>Label format</value>
+  </data>
+  <data name="FormatAuto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
 </root>

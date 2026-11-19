@@ -1,11 +1,25 @@
 using PDFiumSharp;
 using PDFiumSharp.Enums;
+using PDFiumSharp.Types;
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 
 namespace DHLabel
 {
+
+/// <summary>
+/// Etikettenformat des PDFs. Der Wert wird als Einstellung "labelType" gespeichert.
+/// </summary>
+public enum LabelFormat
+{
+    /// <summary>Format anhand des PDF-Inhalts automatisch erkennen.</summary>
+    Auto   = 0,
+    /// <summary>DHL (Privat-, Retoure- oder Business-Label).</summary>
+    Dhl    = 1,
+    /// <summary>Hermes-Paketschein.</summary>
+    Hermes = 2
+}
 
 /// <summary>
 /// Rendert, beschneidet und skaliert ein PDF-Versandetikett
@@ -55,6 +69,29 @@ public class PdfLabelService
         public const double MaxPageWidthMm = 150.0;
     }
 
+    /// <summary>
+    /// Ausschnitt für Hermes-Paketscheine (A4-PDF). Der eigentliche Paketschein
+    /// liegt quer in der oberen Seitenhälfte (Barcode links, Adresse rechts);
+    /// darunter folgen Abtrennlinie und Auftragsbestätigung, die nicht gedruckt
+    /// werden sollen. Der Ausschnitt wird wie bei Privatlabels gedreht, es
+    /// müssen aber keine Streifen entfernt werden.
+    /// </summary>
+    private static class HermesCropSettings
+    {
+        public const double CropXStartMm =  18.0;
+        public const double CropYStartMm =  10.0;
+        public const double CropXEndMm   = 190.0;
+        public const double CropYEndMm   = 134.0;
+
+        // Zielbreite nach der Drehung (100x150-mm-Etikett). Der gedrehte
+        // Ausschnitt wird auf diese Breite eingepasst (statt wie bei DHL auf
+        // die Höhe gestreckt), damit er nicht breiter als das Etikett wird.
+        public const double TargetWidthMm = 100.0;
+
+        // Text, an dem ein Hermes-PDF automatisch erkannt wird.
+        public const string DetectionText = "Hermes";
+    }
+
     // ------------------------------------------------------------------
     // Öffentliche API
     // ------------------------------------------------------------------
@@ -81,7 +118,13 @@ public class PdfLabelService
             int fullWidthPx  = MmToPx(pageWidthMm,  dpi);
             int fullHeightPx = MmToPx(pageHeightMm, dpi);
 
-            bool isBusinessFormat = pageWidthMm < BusinessCropSettings.MaxPageWidthMm;
+            LabelFormat format = (LabelFormat)DHLabel.Properties.Settings.Default.labelType;
+            bool isHermes = format == LabelFormat.Hermes
+                || (format == LabelFormat.Auto && IsHermesPdf(page));
+
+            // Bei Hermes ist das Seitenformat A4 - die Business-Erkennung darf nie greifen.
+            bool isBusinessFormat = !isHermes
+                && pageWidthMm < BusinessCropSettings.MaxPageWidthMm;
 
             // hasAlpha: false, da sonst AsBmpStream() einen BITMAPV4HEADER mit
             // Alpha-Maske schreibt, den System.Drawing.Bitmap(Stream)/GDI+ nicht
@@ -97,6 +140,19 @@ public class PdfLabelService
                 using (var fullImage = new Bitmap(stream))
                 {
                     fullImage.SetResolution(dpi, dpi);
+
+                    if (isHermes)
+                    {
+                        // Hermes-Paketschein: Ausschnitt → drehen → auf 100 mm Breite einpassen.
+                        using (var cropped = CropImage(fullImage, dpi,
+                            HermesCropSettings.CropXStartMm, HermesCropSettings.CropYStartMm,
+                            HermesCropSettings.CropXEndMm,   HermesCropSettings.CropYEndMm))
+                        {
+                            cropped.RotateFlip(RotateFlipType.Rotate90FlipNone);
+                            return ScaleToFit(cropped, dpi, scale, endless,
+                                HermesCropSettings.TargetWidthMm);
+                        }
+                    }
 
                     if (isBusinessFormat)
                     {
@@ -129,6 +185,41 @@ public class PdfLabelService
     // ------------------------------------------------------------------
     // Private Hilfsmethoden
     // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Prüft per PDFium-Textextraktion, ob die Seite ein Hermes-Paketschein ist
+    /// (Text "Hermes" kommt auf der Seite vor). Bei jedem Fehler gilt: kein Hermes,
+    /// damit das DHL-Verhalten unverändert bleibt.
+    /// </summary>
+    private static bool IsHermesPdf(PdfPage page)
+    {
+        try
+        {
+            FPDF_TEXTPAGE textPage = PDFium.FPDFText_LoadPage(page.Handle);
+            if (textPage.IsNull)
+                return false;
+
+            try
+            {
+                int count = PDFium.FPDFText_CountChars(textPage);
+                if (count <= 0)
+                    return false;
+
+                string text = PDFium.FPDFText_GetText(textPage, 0, count);
+                return text != null && text.IndexOf(
+                    HermesCropSettings.DetectionText,
+                    StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+            finally
+            {
+                PDFium.FPDFText_ClosePage(textPage);
+            }
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     /// <summary>Schneidet den angegebenen Bereich (in mm) aus dem gerenderten Vollbild aus.</summary>
     private static Bitmap CropImage(Bitmap source, int dpi,
@@ -222,6 +313,48 @@ public class PdfLabelService
                 g.Clear(Color.White);
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 g.DrawImage(source, new Rectangle(0, 0, targetWidthPx, targetHeightPx));
+            }
+
+            return final;
+        }
+        catch
+        {
+            final.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Passt die Bitmap proportional in ein Feld aus Zielbreite und konfigurierter
+    /// Zielhöhe ein (oben ausgerichtet, horizontal zentriert, Rest weiß).
+    /// Der Aufrufer erhält eine neue Bitmap und ist für deren Dispose verantwortlich.
+    /// </summary>
+    private static Bitmap ScaleToFit(Bitmap source, int dpi, float scale, bool endless, double targetWidthMm)
+    {
+        double targetHeightMm = endless
+            ? CropSettings.EndlessHeightMm
+            : CropSettings.TargetHeightMm;
+
+        int canvasWidthPx  = (int)Math.Round(targetWidthMm  / 25.4 * dpi * scale);
+        int canvasHeightPx = (int)Math.Round(targetHeightMm / 25.4 * dpi * scale);
+
+        double factor = Math.Min(
+            (double)canvasWidthPx  / source.Width,
+            (double)canvasHeightPx / source.Height);
+        int drawWidthPx  = (int)Math.Round(source.Width  * factor);
+        int drawHeightPx = (int)Math.Round(source.Height * factor);
+
+        Bitmap final = new Bitmap(canvasWidthPx, canvasHeightPx);
+        try
+        {
+            final.SetResolution(dpi, dpi);
+
+            using (Graphics g = Graphics.FromImage(final))
+            {
+                g.Clear(Color.White);
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(source, new Rectangle(
+                    (canvasWidthPx - drawWidthPx) / 2, 0, drawWidthPx, drawHeightPx));
             }
 
             return final;

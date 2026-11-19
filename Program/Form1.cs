@@ -39,6 +39,7 @@ namespace DHLabel
 
             cbOntop.Checked    = Properties.Settings.Default.onTop;
             cbEndless.Checked  = Properties.Settings.Default.endless;
+            updateFormatMenu();
             // cbOpenWith wird bereits in checkKey() anhand des tatsächlichen
             // Registry-Zustands gesetzt (Registry ist die Quelle der Wahrheit).
 
@@ -213,6 +214,42 @@ namespace DHLabel
             Properties.Settings.Default.endless = cbEndless.Checked;
             Properties.Settings.Default.Save();
         }
+
+        /// <summary>Setzt das Etikettenformat (Automatisch / DHL / Hermes), speichert es und aktualisiert die Vorschau.</summary>
+        private void setLabelFormat(LabelFormat format)
+        {
+            Properties.Settings.Default.labelType = (int)format;
+            Properties.Settings.Default.Save();
+            updateFormatMenu();
+
+            // Bereits geladenes PDF mit dem neuen Format neu rendern
+            if (!string.IsNullOrEmpty(_currentOriginalPdf) && File.Exists(_currentOriginalPdf))
+            {
+                try
+                {
+                    var newLabel = _pdfService.RenderPdf(_currentOriginalPdf, 203);
+                    picboxLabel.Image?.Dispose();
+                    _currentLabel     = newLabel;
+                    picboxLabel.Image = _currentLabel;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(Properties.Resources.ErrorLoadingPDFN + ex.Message);
+                }
+            }
+        }
+
+        private void updateFormatMenu()
+        {
+            var format = (LabelFormat)Properties.Settings.Default.labelType;
+            formatAutoToolStripMenuItem.Checked   = format == LabelFormat.Auto;
+            formatDhlToolStripMenuItem.Checked    = format == LabelFormat.Dhl;
+            formatHermesToolStripMenuItem.Checked = format == LabelFormat.Hermes;
+        }
+
+        private void formatAuto_Click(object sender, EventArgs e)   { setLabelFormat(LabelFormat.Auto); }
+        private void formatDhl_Click(object sender, EventArgs e)    { setLabelFormat(LabelFormat.Dhl); }
+        private void formatHermes_Click(object sender, EventArgs e) { setLabelFormat(LabelFormat.Hermes); }
 
         private void cbOntop_CheckedChanged(object sender, EventArgs e)
         {
